@@ -201,6 +201,11 @@ export interface RequestContext {
   readonly queueWaitMs: number
   readonly warningMessages: ReadonlyArray<WarningMessage>
 
+  /** AbortSignal that fires when abort() is called (server-side user cancellation) */
+  readonly abortSignal: AbortSignal
+  /** Abort this request immediately and mark it as failed with "cancelled by user" */
+  abort(): void
+
   setSessionId(sessionId: string | undefined): void
   setOriginalRequest(req: OriginalRequest): void
   setPipelineInfo(info: PipelineInfo): void

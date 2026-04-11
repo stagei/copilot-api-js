@@ -3,6 +3,21 @@ import { test, expect } from "@playwright/test"
 import { ensureServerRunning, uiUrl } from "./helpers"
 import { createHistoryUiScenario, installHistoryUiMocks } from "./history-mocks"
 
+// Minimal DOM type stubs for Playwright evaluate() callbacks (browser context).
+// DOM lib is excluded from tsconfig to avoid conflicts with Bun types.
+
+type HTMLElement = {
+  scrollTop: number
+  scrollHeight: number
+  clientHeight: number
+  className: string
+  getBoundingClientRect(): { left: number; top: number; width: number; height: number }
+  querySelectorAll<T>(selector: string): ArrayLike<T>
+}
+
+type HTMLDivElement = HTMLElement
+declare function getComputedStyle(el: unknown): { overflowY: string }
+
 test.beforeAll(ensureServerRunning)
 
 test.describe("Vuetify History And Activity", () => {
@@ -81,11 +96,12 @@ test.describe("Vuetify History And Activity", () => {
     const nestedVerticalScrollables = await detailCard.evaluate((node) => {
       return Array.from(node.querySelectorAll<HTMLElement>("*"))
         .filter((element) => {
-          const style = getComputedStyle(element)
+          const el = element as HTMLElement
+          const style = getComputedStyle(el)
           const canScroll = style.overflowY === "auto" || style.overflowY === "scroll"
-          return canScroll && element.scrollHeight > Number(element.clientHeight) + 8
+          return canScroll && el.scrollHeight > el.clientHeight + 8
         })
-        .map((element) => element.className)
+        .map((element) => (element as HTMLElement).className)
     })
 
     expect(nestedVerticalScrollables).toContain("detail-body")
@@ -142,8 +158,8 @@ test.describe("Vuetify History And Activity", () => {
     const topmostTarget = await rawJsonCard.evaluate((node) => {
       const elementNode = node as HTMLDivElement
       const rect = elementNode.getBoundingClientRect()
-      const x = Number(rect.left) + Number(rect.width) / 2
-      const y = Number(rect.top) + Math.min(120, Number(rect.height) / 2)
+      const x = rect.left + rect.width / 2
+      const y = rect.top + Math.min(120, rect.height / 2)
       const doc = (
         globalThis as unknown as {
           document: {

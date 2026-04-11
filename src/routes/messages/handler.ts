@@ -48,7 +48,7 @@ import { createDeferredToolRetryStrategy } from "~/lib/request/strategies/deferr
 import { createNetworkRetryStrategy } from "~/lib/request/strategies/network-retry"
 import { createTokenRefreshStrategy } from "~/lib/request/strategies/token-refresh"
 import { state } from "~/lib/state"
-import { StreamIdleTimeoutError } from "~/lib/stream"
+import { StreamIdleTimeoutError, combineAbortSignals } from "~/lib/stream"
 import { processAnthropicSystem } from "~/lib/system-prompt"
 import { tuiLogger } from "~/lib/tui"
 
@@ -134,7 +134,12 @@ export async function handleMessages(c: Context) {
 // ============================================================================
 
 // Handle completion using direct Anthropic API (no translation needed)
-async function handleDirectAnthropicCompletion(c: Context, anthropicPayload: MessagesPayload, reqCtx: RequestContext, preprocessInfo: PreprocessInfo) {
+async function handleDirectAnthropicCompletion(
+  c: Context,
+  anthropicPayload: MessagesPayload,
+  reqCtx: RequestContext,
+  preprocessInfo: PreprocessInfo,
+) {
   consola.debug("Using direct Anthropic API path for model:", anthropicPayload.model)
 
   // Find model for auto-truncate and usage adjustment
@@ -192,7 +197,8 @@ async function handleDirectAnthropicCompletion(c: Context, anthropicPayload: Mes
               format: "anthropic-messages",
             })
           },
-        })),
+        }),
+      ),
     logPayloadSize: (p) => logPayloadSizeInfoAnthropic(p, selectedModel),
   }
 
@@ -282,7 +288,7 @@ async function handleDirectAnthropicCompletion(c: Context, anthropicPayload: Mes
           response: response as AsyncIterable<ServerSentEventMessage>,
           anthropicPayload: effectivePayload,
           reqCtx,
-          clientAbortSignal: clientAbort.signal,
+          clientAbortSignal: combineAbortSignals(clientAbort.signal, reqCtx.abortSignal),
         })
       })
     }

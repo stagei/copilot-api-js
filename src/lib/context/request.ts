@@ -62,6 +62,8 @@ export function createRequestContext(opts: {
   const startTime = Date.now()
   const onEvent = opts.onEvent
 
+  const _abortController = new AbortController()
+
   // Mutable internal state
   let _state: RequestState = "pending"
   let _sessionId = opts.sessionId
@@ -133,6 +135,16 @@ export function createRequestContext(opts: {
     },
     get warningMessages() {
       return _warningMessages
+    },
+
+    get abortSignal() {
+      return _abortController.signal
+    },
+
+    abort() {
+      if (settled) return
+      _abortController.abort()
+      ctx.fail(_originalRequest?.model ?? "unknown", new Error("Request cancelled by user"))
     },
 
     setSessionId(sessionId: string | undefined) {

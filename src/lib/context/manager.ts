@@ -18,10 +18,9 @@ import { consola } from "consola"
 
 import type { EndpointType } from "~/lib/history/store"
 
-import { state } from "~/lib/state"
-
-import { notifyActiveRequestChanged } from "~/lib/ws"
 import { recordAcceptedRequest, recordSettledRequest } from "~/lib/request-telemetry"
+import { state } from "~/lib/state"
+import { notifyActiveRequestChanged } from "~/lib/ws"
 
 import type { HistoryEntryData, RequestContext, RequestContextEventData, RequestState } from "./request"
 
@@ -57,6 +56,9 @@ export interface RequestContextManager {
 
   /** Unsubscribe from context events */
   off(event: "change", listener: (event: RequestContextEvent) => void): void
+
+  /** Abort all active requests (Esc key cancellation) */
+  abortAll(): void
 
   /** Start periodic cleanup of stale active contexts */
   startReaper(): void
@@ -265,6 +267,12 @@ export function createRequestContextManager(): RequestContextManager {
 
     off(_event: "change", listener: (event: RequestContextEvent) => void) {
       listeners.delete(listener)
+    },
+
+    abortAll() {
+      for (const ctx of activeContexts.values()) {
+        ctx.abort()
+      }
     },
 
     startReaper,

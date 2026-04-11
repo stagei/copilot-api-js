@@ -451,7 +451,7 @@ async function handleStreamingResponse(opts: StreamingOptions) {
     const iterator = response[Symbol.asyncIterator]()
 
     for (;;) {
-      const abortSignal = combineAbortSignals(getShutdownSignal(), clientAbortSignal)
+      const abortSignal = combineAbortSignals(getShutdownSignal(), clientAbortSignal, reqCtx.abortSignal)
       const result = await raceIteratorNext(iterator.next(), { idleTimeoutMs, abortSignal })
 
       if (result === STREAM_ABORTED) break

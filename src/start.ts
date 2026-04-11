@@ -24,7 +24,7 @@ import { startServer } from "./lib/serve"
 import { setServerInstance, setupShutdownHandlers, waitForShutdown } from "./lib/shutdown"
 import { setCliState, setServerStartTime, state } from "./lib/state"
 import { initTokenManagers } from "./lib/token"
-import { initTuiLogger } from "./lib/tui"
+import { initTuiLogger, initKeyboardHandler, cleanupKeyboardHandler } from "./lib/tui"
 import { createWebSocketAdapter, setConnectedDataFactory } from "./lib/ws"
 import { registerWsRoutes } from "./routes"
 import { normalizeExternalUiUrl } from "./routes/ui/route"
@@ -274,6 +274,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   // so the handler has access to the server instance when closing.
   setServerInstance(serverInstance)
   setupShutdownHandlers()
+  initKeyboardHandler()
 
   // Inject the single shared WebSocket upgrade handler into Node.js HTTP server (no-op under Bun)
   if (wsAdapter.injectWebSocket && serverInstance.nodeServer) {
@@ -286,6 +287,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
     // process.exit(0) in main.ts (needed for one-shot commands).
     await waitForShutdown()
   } finally {
+    cleanupKeyboardHandler()
     stopModelRefreshLoop()
   }
 }

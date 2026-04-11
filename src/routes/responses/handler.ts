@@ -192,7 +192,7 @@ async function handleDirectResponses(opts: ResponsesHandlerOptions) {
         const iterator = (response as AsyncIterable<ServerSentEventMessage>)[Symbol.asyncIterator]()
 
         for (;;) {
-          const abortSignal = combineAbortSignals(getShutdownSignal(), clientAbort.signal)
+          const abortSignal = combineAbortSignals(getShutdownSignal(), clientAbort.signal, reqCtx.abortSignal)
           const result = await raceIteratorNext(iterator.next(), { idleTimeoutMs, abortSignal })
 
           if (result === STREAM_ABORTED) break
