@@ -14,9 +14,19 @@ export const getCopilotToken = async (): Promise<CopilotTokenResponse> => {
     signal: AbortSignal.timeout(15_000),
   })
 
-  if (!response.ok) throw await HTTPError.fromResponse("Failed to get Copilot token", response)
+  if (response.ok) return (await response.json()) as CopilotTokenResponse
 
-  return (await response.json()) as CopilotTokenResponse
+  // Only Copilot-approved OAuth apps may exchange a GitHub token. A token from another app
+  // (gh CLI, a PAT) is refused here but accepted by the Copilot API itself, as the Copilot CLI does.
+  if ((response.status === 403 || response.status === 404) && process.env.COPILOT_API_DIRECT_TOKEN !== "0") {
+    const usage = await getCopilotUsage().catch(() => null)
+    if (usage?.chat_enabled) {
+      const now = Math.floor(Date.now() / 1000)
+      return { token: state.githubToken, expires_at: now + 86_400, refresh_in: 3600, direct: true }
+    }
+  }
+
+  throw await HTTPError.fromResponse("Failed to get Copilot token", response)
 }
 
 /**

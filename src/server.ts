@@ -2,6 +2,7 @@ import consola from "consola"
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { trimTrailingSlash } from "hono/trailing-slash"
+import { timingSafeEqual } from "node:crypto"
 
 import { applyConfigToState } from "./lib/config/config"
 import { forwardError } from "./lib/error"
@@ -55,6 +56,23 @@ export function createServer(options: ServerOptions = {}) {
 
   server.use(tuiMiddleware())
   server.use(cors())
+
+  const apiKey = process.env.COPILOT_API_KEY
+  if (apiKey) {
+    const expected = Buffer.from(apiKey)
+    server.use(async (c, next) => {
+      if (c.req.method === "OPTIONS" || c.req.path === "/" || c.req.path === "/health") return next()
+      const header = c.req.header("authorization") ?? ""
+      const presented = Buffer.from(
+        header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : (c.req.header("x-api-key") ?? ""),
+      )
+      if (presented.length !== expected.length || !timingSafeEqual(presented, expected)) {
+        return c.json({ error: { message: "Invalid API key", type: "authentication_error" } }, 401)
+      }
+      return next()
+    })
+  }
+
   server.use(trimTrailingSlash())
 
   server.get("/", (c) => c.text("Server running"))
